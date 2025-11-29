@@ -1,0 +1,31 @@
+#!/bin/bash
+# setup-claude-code-ui.sh
+
+set -e
+
+# Config
+DB_PATH="$HOME/.local/share/mise/installs/node/25.2.1/lib/node_modules/@siteboon/claude-code-ui/server/database/auth.db"
+USERNAME="${1:-admin}"
+PASSWORD="${2:-admin}"
+
+# Check if bcrypt is available
+if ! node -e "require('bcrypt')" 2>/dev/null; then
+    echo "Installing bcrypt..."
+    npm install -g bcrypt
+fi
+
+# Generate hash
+echo "Generating password hash..."
+HASH=$(node -e "const bcrypt = require('bcrypt'); bcrypt.hash('$PASSWORD', 12).then(h => console.log(h));")
+
+# Update or insert user
+echo "Setting up user '$USERNAME'..."
+sqlite3 "$DB_PATH" "DELETE FROM users WHERE username = '$USERNAME';"
+sqlite3 "$DB_PATH" <<EOF
+INSERT INTO users (username, password_hash, is_active) VALUES ('$USERNAME', '$HASH', 1);
+EOF
+
+echo "Done! Login with:"
+echo "  Username: $USERNAME"
+echo "  Password: $PASSWORD"
+
