@@ -124,6 +124,19 @@ uv run pytest
 docker build -t oura-scraper .
 ```
 
+## Releases
+
+Docker images are built and pushed to GHCR on git tags. Versioning is manual:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+This triggers GitHub Actions to build and push:
+- `ghcr.io/mischavandenburg/oura-scraper:v0.1.0`
+- `ghcr.io/mischavandenburg/oura-scraper:latest`
+
 ## Oura API Reference
 
 - **Base URL**: `https://api.ouraring.com/v2/usercollection/`
