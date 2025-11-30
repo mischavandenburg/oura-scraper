@@ -11,6 +11,47 @@ A Python CLI tool that scrapes health metrics from the Oura Ring API and stores 
 - Multi-stage Docker image (~50MB)
 - Kubernetes-ready with environment variable configuration
 
+## Getting OAuth Tokens
+
+Before using the scraper, you need to obtain OAuth tokens from Oura:
+
+### 1. Create an Oura Application
+
+1. Go to [Oura Developer Portal](https://cloud.ouraring.com/oauth/applications)
+2. Create a new application
+3. Set the callback URL to `http://localhost:8080/callback`
+4. Note your **Client ID** and **Client Secret**
+
+### 2. Run the Auth Flow
+
+```bash
+# Set your OAuth credentials
+export OURA_CLIENT_ID=your_client_id
+export OURA_CLIENT_SECRET=your_client_secret
+
+# Start the OAuth flow
+uv run oura-scraper auth
+```
+
+This will:
+1. Open your browser to the Oura authorization page
+2. Start a local server on `http://localhost:8080`
+3. After you authorize, Oura redirects back with the tokens
+4. Tokens are saved to `admin/tokens/oura_tokens.json`
+
+### 3. Use the Tokens
+
+For local development, the scraper reads from the token file automatically.
+
+For containerized deployments, extract the tokens and set them as environment variables:
+
+```bash
+export OURA_ACCESS_TOKEN=<access_token from json>
+export OURA_REFRESH_TOKEN=<refresh_token from json>
+```
+
+**Note**: Refresh tokens are single-use. Each time the scraper refreshes the access token, it receives a new refresh token. The scraper handles this automatically and updates the stored tokens.
+
 ## Quick Start
 
 ### Local Development
