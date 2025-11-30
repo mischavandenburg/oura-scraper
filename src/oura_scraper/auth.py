@@ -19,7 +19,7 @@ from typing import Any
 
 import httpx
 
-from oura_scraper.config import get_settings
+from oura_scraper.config import get_default_token_path, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -85,16 +85,20 @@ class TokenStorage:
         """Initialize token storage.
 
         Args:
-            path: Path to token file. Defaults to OURA_TOKEN_PATH setting.
+            path: Path to token file. Defaults to ~/.config/oura-scraper/tokens.json.
         """
         if path is None:
             settings = get_settings()
-            self.path = Path(settings.token_path)
+            # Use setting if provided, otherwise use default config path
+            token_path = settings.token_path if settings.token_path else get_default_token_path()
+            self.path = Path(token_path)
         else:
             self.path = path
 
     def save(self, tokens: OAuthTokens) -> None:
         """Save tokens to file."""
+        # Create parent directory if it doesn't exist
+        self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(tokens.to_dict(), indent=2))
         self.path.chmod(0o600)  # Restrict permissions
         logger.info("Tokens saved to %s", self.path)

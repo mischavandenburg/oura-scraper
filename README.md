@@ -37,7 +37,7 @@ This will:
 1. Open your browser to the Oura authorization page
 2. Start a local server on `http://localhost:8080`
 3. After you authorize, Oura redirects back with the tokens
-4. Tokens are saved to `admin/tokens/oura_tokens.json`
+4. Tokens are saved to `~/.config/oura-scraper/tokens.json`
 
 ### 3. Use the Tokens
 
@@ -109,8 +109,9 @@ All variables use the `OURA_` prefix:
 | `OURA_DB_PASSWORD` | Database password | (required) |
 | `OURA_CLIENT_ID` | OAuth2 client ID | (for OAuth flow) |
 | `OURA_CLIENT_SECRET` | OAuth2 client secret | (for OAuth flow) |
-| `OURA_ACCESS_TOKEN` | OAuth2 access token | (required) |
-| `OURA_REFRESH_TOKEN` | OAuth2 refresh token | (required) |
+| `OURA_ACCESS_TOKEN` | OAuth2 access token | (for containers) |
+| `OURA_REFRESH_TOKEN` | OAuth2 refresh token | (for containers) |
+| `OURA_TOKEN_PATH` | Path to store OAuth tokens | `~/.config/oura-scraper/tokens.json` |
 | `OURA_SCRAPE_DAYS` | Days of data to scrape | `7` |
 
 ## Data Collected

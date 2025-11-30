@@ -1,6 +1,13 @@
 """Configuration management via environment variables."""
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def get_default_token_path() -> str:
+    """Get the default token path in ~/.config/oura-scraper/tokens.json."""
+    return str(Path.home() / ".config" / "oura-scraper" / "tokens.json")
 
 
 class Settings(BaseSettings):
@@ -23,7 +30,7 @@ class Settings(BaseSettings):
     client_secret: str = ""
     access_token: str = ""  # Can be set via env var for containerized deployments
     refresh_token: str = ""  # Can be set via env var for containerized deployments
-    token_path: str = "admin/tokens/oura_tokens.json"  # Path to store OAuth tokens (fallback)
+    token_path: str = ""  # Defaults to ~/.config/oura-scraper/tokens.json
 
     # Scraping settings
     scrape_days: int = 7  # Number of days to scrape (default 7, can be set to 1825 for 5 years)
