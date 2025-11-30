@@ -1,0 +1,30 @@
+# Git
+.git/
+.gitignore
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Environment and secrets
+.env
+.env.*
+admin/
+
+# IDE and tools
+.devcontainer/
+.github/
+.vscode/
+*.md
+mise.toml
+.python-version
+
+# Tests
+tests/
