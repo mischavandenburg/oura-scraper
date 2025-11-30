@@ -2,7 +2,7 @@
 
 import logging
 from datetime import date, timedelta
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -58,7 +58,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched personal info")
-        return data
+        return cast(dict[str, Any], data)
 
     def get_daily_activity(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch daily activity data.
@@ -79,7 +79,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d daily activity records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_daily_sleep(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch daily sleep data."""
@@ -92,7 +92,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d daily sleep records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_daily_readiness(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch daily readiness data."""
@@ -105,7 +105,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d daily readiness records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_daily_stress(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch daily stress data."""
@@ -118,7 +118,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d daily stress records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_daily_spo2(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch daily SpO2 data."""
@@ -131,7 +131,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d daily SpO2 records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_daily_cardiovascular_age(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch daily cardiovascular age data."""
@@ -144,7 +144,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d cardiovascular age records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_daily_resilience(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch daily resilience data."""
@@ -157,7 +157,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d daily resilience records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_sleep(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch detailed sleep periods data."""
@@ -170,7 +170,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d sleep records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_sleep_time(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch sleep time (optimal bedtime) data."""
@@ -183,7 +183,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d sleep time records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_heartrate(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch heart rate data (5-minute intervals)."""
@@ -196,7 +196,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d heart rate records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_vo2_max(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch VO2 max data."""
@@ -209,7 +209,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d VO2 max records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_workout(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch workout data."""
@@ -222,7 +222,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d workout records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_session(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch session data (meditation, breathing, naps)."""
@@ -235,7 +235,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d session records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_enhanced_tag(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch enhanced tag data."""
@@ -248,7 +248,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d enhanced tag records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)
 
     def get_ring_configuration(self) -> dict[str, Any]:
         """Fetch ring configuration data."""
@@ -260,7 +260,7 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched ring configuration")
-        return data
+        return cast(dict[str, Any], data)
 
     def get_rest_mode_period(self, start_date: str, end_date: str) -> dict[str, Any]:
         """Fetch rest mode period data."""
@@ -273,4 +273,4 @@ class OuraAPIClient:
 
         data = response.json()
         logger.info("Successfully fetched %d rest mode period records", len(data.get("data", [])))
-        return data
+        return cast(dict[str, Any], data)

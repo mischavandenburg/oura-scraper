@@ -9,7 +9,9 @@ from psycopg.types.json import Json
 logger = logging.getLogger(__name__)
 
 
-def upsert_personal_info(conn: psycopg.Connection[tuple[object, ...]], data: dict[str, Any]) -> None:
+def upsert_personal_info(
+    conn: psycopg.Connection[tuple[object, ...]], data: dict[str, Any]
+) -> None:
     """Upsert personal info record.
 
     Args:
@@ -286,9 +288,10 @@ def upsert_daily_spo2(
 
     with conn.cursor() as cur:
         for record in records:
+            spo2 = record.get("spo2_percentage")
             params = {
                 **record,
-                "spo2_percentage": Json(record.get("spo2_percentage")) if record.get("spo2_percentage") else None,
+                "spo2_percentage": Json(spo2) if spo2 else None,
             }
             cur.execute(sql, params)
 
@@ -366,9 +369,10 @@ def upsert_sleep_time(
 
     with conn.cursor() as cur:
         for record in records:
+            bedtime = record.get("optimal_bedtime")
             params = {
                 **record,
-                "optimal_bedtime": Json(record.get("optimal_bedtime")) if record.get("optimal_bedtime") else None,
+                "optimal_bedtime": Json(bedtime) if bedtime else None,
             }
             cur.execute(sql, params)
 
@@ -460,11 +464,14 @@ def upsert_session(
 
     with conn.cursor() as cur:
         for record in records:
+            hr = record.get("heart_rate")
+            hrv = record.get("hrv")
+            motion = record.get("motion_count")
             params = {
                 **record,
-                "heart_rate": Json(record.get("heart_rate")) if record.get("heart_rate") else None,
-                "hrv": Json(record.get("hrv")) if record.get("hrv") else None,
-                "motion_count": Json(record.get("motion_count")) if record.get("motion_count") else None,
+                "heart_rate": Json(hr) if hr else None,
+                "hrv": Json(hrv) if hrv else None,
+                "motion_count": Json(motion) if motion else None,
             }
             cur.execute(sql, params)
 

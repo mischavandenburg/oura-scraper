@@ -15,13 +15,29 @@ from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from threading import Thread
-from typing import Any
+from typing import Any, Protocol
 
 import httpx
 
 from oura_scraper.config import get_default_token_path, get_settings
 
 logger = logging.getLogger(__name__)
+
+
+class TokenStorageProtocol(Protocol):
+    """Protocol for token storage backends."""
+
+    def save(self, tokens: "OAuthTokens") -> None:
+        """Save tokens to storage."""
+        ...
+
+    def load(self) -> "OAuthTokens | None":
+        """Load tokens from storage."""
+        ...
+
+    def clear(self) -> None:
+        """Clear stored tokens."""
+        ...
 
 AUTHORIZE_URL = "https://cloud.ouraring.com/oauth/authorize"
 TOKEN_URL = "https://api.ouraring.com/oauth/token"
@@ -136,6 +152,102 @@ class TokenStorage:
             logger.info("Tokens cleared")
 
 
+class DatabaseTokenStorage:
+    """Database-backed token storage for stateless container deployments.
+
+    Stores tokens in PostgreSQL, ensuring they persist across container restarts
+    and token refreshes. This follows 12-factor app principles by treating the
+    database as a backing service for state persistence.
+    """
+
+    def __init__(self, database_url: str) -> None:
+        """Initialize database token storage.
+
+        Args:
+            database_url: PostgreSQL connection URL
+        """
+        self.database_url = database_url
+
+    def save(self, tokens: OAuthTokens) -> None:
+        """Save tokens to database using upsert."""
+        import psycopg
+
+        with psycopg.connect(self.database_url) as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO oauth_tokens
+                    (id, access_token, refresh_token, expires_at, token_type, updated_at)
+                VALUES (1, %(access_token)s, %(refresh_token)s, %(expires_at)s,
+                        %(token_type)s, NOW())
+                ON CONFLICT (id) DO UPDATE SET
+                    access_token = EXCLUDED.access_token,
+                    refresh_token = EXCLUDED.refresh_token,
+                    expires_at = EXCLUDED.expires_at,
+                    token_type = EXCLUDED.token_type,
+                    updated_at = NOW()
+                """,
+                {
+                    "access_token": tokens.access_token,
+                    "refresh_token": tokens.refresh_token,
+                    "expires_at": tokens.expires_at,
+                    "token_type": tokens.token_type,
+                },
+            )
+            conn.commit()
+        logger.info("Tokens saved to database")
+
+    def load(self) -> OAuthTokens | None:
+        """Load tokens from env vars or database.
+
+        Priority: env vars > database
+        """
+        import psycopg
+
+        # First try env vars (for initial bootstrap)
+        settings = get_settings()
+        if settings.access_token and settings.refresh_token:
+            logger.debug("Loading tokens from environment variables")
+            return OAuthTokens(
+                access_token=settings.access_token,
+                refresh_token=settings.refresh_token,
+                expires_at=datetime.now(UTC) + timedelta(days=365),
+                token_type="bearer",
+            )
+
+        # Fall back to database
+        try:
+            with psycopg.connect(self.database_url) as conn, conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT access_token, refresh_token, expires_at, token_type
+                    FROM oauth_tokens
+                    WHERE id = 1
+                    """
+                )
+                row = cur.fetchone()
+                if row:
+                    logger.debug("Loading tokens from database")
+                    return OAuthTokens(
+                        access_token=row[0],
+                        refresh_token=row[1],
+                        expires_at=row[2],
+                        token_type=row[3] or "bearer",
+                    )
+        except psycopg.Error as e:
+            logger.warning("Failed to load tokens from database: %s", e)
+
+        return None
+
+    def clear(self) -> None:
+        """Delete stored tokens from database."""
+        import psycopg
+
+        with psycopg.connect(self.database_url) as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM oauth_tokens WHERE id = 1")
+            conn.commit()
+        logger.info("Tokens cleared from database")
+
+
 class OAuthCallbackHandler(BaseHTTPRequestHandler):
     """HTTP handler to capture OAuth callback."""
 
@@ -178,7 +290,7 @@ class OuraAuth:
         self,
         client_id: str | None = None,
         client_secret: str | None = None,
-        token_storage: TokenStorage | None = None,
+        token_storage: TokenStorageProtocol | None = None,
     ) -> None:
         """Initialize OAuth handler.
 
@@ -190,7 +302,7 @@ class OuraAuth:
         settings = get_settings()
         self.client_id = client_id or settings.client_id
         self.client_secret = client_secret or settings.client_secret
-        self.storage = token_storage or TokenStorage()
+        self.storage: TokenStorageProtocol = token_storage or TokenStorage()
         self._tokens: OAuthTokens | None = None
 
     def get_authorization_url(

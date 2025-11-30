@@ -291,6 +291,17 @@ CREATE TABLE IF NOT EXISTS oura_rest_mode_period (
 );
 
 CREATE INDEX IF NOT EXISTS idx_oura_rest_mode_period_start_day ON oura_rest_mode_period(start_day);
+
+-- OAuth Tokens (single row, updated on each refresh)
+-- Stores tokens in database for stateless container deployments
+CREATE TABLE IF NOT EXISTS oauth_tokens (
+    id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),  -- Ensures single row
+    access_token TEXT NOT NULL,
+    refresh_token TEXT NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    token_type VARCHAR(50) DEFAULT 'bearer',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 """
 
 

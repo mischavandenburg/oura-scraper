@@ -91,7 +91,10 @@ def cmd_auth(args: argparse.Namespace) -> int:
         tokens = auth.authorize_interactive(port=args.port)
         print("\nAuthorization successful!")
         print(f"Access token: {tokens.access_token[:20]}...")
-        print(f"Tokens saved to: {auth.storage.path}")
+        if hasattr(auth.storage, "path"):
+            print(f"Tokens saved to: {auth.storage.path}")
+        else:
+            print("Tokens saved to storage")
         return 0
     except ValueError as e:
         logger.error("Authorization failed: %s", e)

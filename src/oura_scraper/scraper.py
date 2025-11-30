@@ -3,11 +3,10 @@
 import logging
 from typing import Any
 
-import httpx
 import psycopg
 
 from oura_scraper.api_client import OuraAPIClient, get_date_range
-from oura_scraper.auth import OuraAuth
+from oura_scraper.auth import DatabaseTokenStorage, OuraAuth
 from oura_scraper.config import get_settings
 from oura_scraper.db import operations as ops
 
@@ -25,9 +24,12 @@ class OuraScraper:
         """
         self.days = days
         self.start_date, self.end_date = get_date_range(days)
-        self.auth = OuraAuth()
-        self.client = OuraAPIClient(self.auth)
         self.settings = get_settings()
+
+        # Use database token storage for stateless container deployments
+        token_storage = DatabaseTokenStorage(self.settings.database_url)
+        self.auth = OuraAuth(token_storage=token_storage)
+        self.client = OuraAPIClient(self.auth)
         self.stats: dict[str, Any] = {}
 
     def scrape_all(self) -> dict[str, Any]:
@@ -36,7 +38,10 @@ class OuraScraper:
         Returns:
             Dictionary with statistics about what was scraped
         """
-        logger.info("Starting scrape for %d days: %s to %s", self.days, self.start_date, self.end_date)
+        logger.info(
+            "Starting scrape for %d days: %s to %s",
+            self.days, self.start_date, self.end_date
+        )
 
         with psycopg.connect(self.settings.database_url) as conn:
             # Personal info (no date range)
