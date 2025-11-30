@@ -100,7 +100,22 @@ class TokenStorage:
         logger.info("Tokens saved to %s", self.path)
 
     def load(self) -> OAuthTokens | None:
-        """Load tokens from file."""
+        """Load tokens from env vars or file.
+
+        Priority: env vars > file
+        """
+        # First try env vars (for containerized deployments)
+        settings = get_settings()
+        if settings.access_token and settings.refresh_token:
+            logger.debug("Loading tokens from environment variables")
+            return OAuthTokens(
+                access_token=settings.access_token,
+                refresh_token=settings.refresh_token,
+                expires_at=datetime.now(UTC) + timedelta(days=365),  # Assume valid
+                token_type="bearer",
+            )
+
+        # Fall back to file
         if not self.path.exists():
             return None
         try:

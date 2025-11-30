@@ -21,7 +21,9 @@ class Settings(BaseSettings):
     # Oura OAuth2 settings
     client_id: str = ""
     client_secret: str = ""
-    token_path: str = "admin/tokens/oura_tokens.json"  # Path to store OAuth tokens
+    access_token: str = ""  # Can be set via env var for containerized deployments
+    refresh_token: str = ""  # Can be set via env var for containerized deployments
+    token_path: str = "admin/tokens/oura_tokens.json"  # Path to store OAuth tokens (fallback)
 
     # Scraping settings
     scrape_days: int = 7  # Number of days to scrape (default 7, can be set to 1825 for 5 years)
