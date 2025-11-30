@@ -15,11 +15,14 @@ from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from threading import Thread
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 import httpx
 
 from oura_scraper.config import get_default_token_path, get_settings
+
+if TYPE_CHECKING:
+    from cryptography.fernet import Fernet
 
 logger = logging.getLogger(__name__)
 
@@ -155,21 +158,41 @@ class TokenStorage:
 class DatabaseTokenStorage:
     """Database-backed token storage for stateless container deployments.
 
-    Stores tokens in PostgreSQL, ensuring they persist across container restarts
-    and token refreshes. This follows 12-factor app principles by treating the
-    database as a backing service for state persistence.
+    Stores tokens in PostgreSQL with encryption, ensuring they persist across
+    container restarts and token refreshes. This follows 12-factor app principles
+    by treating the database as a backing service for state persistence.
     """
 
-    def __init__(self, database_url: str) -> None:
+    def __init__(self, database_url: str, encryption_key: str | None = None) -> None:
         """Initialize database token storage.
 
         Args:
             database_url: PostgreSQL connection URL
+            encryption_key: Fernet encryption key for encrypting tokens at rest
         """
         self.database_url = database_url
+        self._cipher: Fernet | None = None
+
+        if encryption_key:
+            from cryptography.fernet import Fernet as FernetCipher
+
+            self._cipher = FernetCipher(encryption_key.encode())
+            logger.debug("Token encryption enabled")
+
+    def _encrypt(self, value: str) -> str:
+        """Encrypt a string value."""
+        if self._cipher is None:
+            return value
+        return self._cipher.encrypt(value.encode()).decode()
+
+    def _decrypt(self, value: str) -> str:
+        """Decrypt a string value."""
+        if self._cipher is None:
+            return value
+        return self._cipher.decrypt(value.encode()).decode()
 
     def save(self, tokens: OAuthTokens) -> None:
-        """Save tokens to database using upsert."""
+        """Save encrypted tokens to database using upsert."""
         import psycopg
 
         with psycopg.connect(self.database_url) as conn, conn.cursor() as cur:
@@ -187,14 +210,14 @@ class DatabaseTokenStorage:
                     updated_at = NOW()
                 """,
                 {
-                    "access_token": tokens.access_token,
-                    "refresh_token": tokens.refresh_token,
+                    "access_token": self._encrypt(tokens.access_token),
+                    "refresh_token": self._encrypt(tokens.refresh_token),
                     "expires_at": tokens.expires_at,
                     "token_type": tokens.token_type,
                 },
             )
             conn.commit()
-        logger.info("Tokens saved to database")
+        logger.info("Tokens saved to database (encrypted)")
 
     def load(self) -> OAuthTokens | None:
         """Load tokens from database, falling back to env vars for bootstrap.
@@ -215,10 +238,10 @@ class DatabaseTokenStorage:
                 )
                 row = cur.fetchone()
                 if row:
-                    logger.debug("Loading tokens from database")
+                    logger.debug("Loading tokens from database (decrypting)")
                     return OAuthTokens(
-                        access_token=row[0],
-                        refresh_token=row[1],
+                        access_token=self._decrypt(row[0]),
+                        refresh_token=self._decrypt(row[1]),
                         expires_at=row[2],
                         token_type=row[3] or "bearer",
                     )

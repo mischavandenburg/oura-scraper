@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     refresh_token: str = ""  # Can be set via env var for containerized deployments
     token_path: str = ""  # Defaults to ~/.config/oura-scraper/tokens.json
 
+    # Security settings
+    encryption_key: str = ""  # Fernet key for encrypting tokens in database
+
     # Scraping settings
     scrape_days: int = 7  # Number of days to scrape (default 7, can be set to 1825 for 5 years)
 

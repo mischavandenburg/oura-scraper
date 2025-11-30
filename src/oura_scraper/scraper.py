@@ -27,7 +27,11 @@ class OuraScraper:
         self.settings = get_settings()
 
         # Use database token storage for stateless container deployments
-        token_storage = DatabaseTokenStorage(self.settings.database_url)
+        # Encryption key is optional - if not set, tokens are stored in plaintext
+        token_storage = DatabaseTokenStorage(
+            self.settings.database_url,
+            encryption_key=self.settings.encryption_key or None,
+        )
         self.auth = OuraAuth(token_storage=token_storage)
         self.client = OuraAPIClient(self.auth)
         self.stats: dict[str, Any] = {}
