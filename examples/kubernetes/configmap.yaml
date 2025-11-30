@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oura-scraper-config
+  namespace: oura-scraper
+data:
+  OURA_DB_HOST: "postgres.example.com"
+  OURA_DB_PORT: "5432"
+  OURA_DB_NAME: "health"
+  OURA_DB_USER: "health"
+  OURA_SCRAPE_DAYS: "7"

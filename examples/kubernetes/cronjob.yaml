@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: oura-scraper
+  namespace: oura-scraper
+  labels:
+    app: oura-scraper
+spec:
+  schedule: "0 * * * *"  # Run every hour
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: oura-scraper
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: oura-scraper
+              image: ghcr.io/mischavandenburg/oura-scraper:latest
+              command: ["/app/.venv/bin/oura-scraper", "scrape"]
+              envFrom:
+                - secretRef:
+                    name: oura-scraper-secrets
+                - configMapRef:
+                    name: oura-scraper-config
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              resources:
+                requests:
+                  memory: "64Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "256Mi"
+                  cpu: "500m"

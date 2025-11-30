@@ -16,7 +16,7 @@ uv sync
 uv run oura-scraper --help
 uv run oura-scraper init-db --print-sql    # Print schema SQL
 uv run oura-scraper init-db                 # Initialize database
-uv run oura-scraper scrape                  # Run scraper (not yet implemented)
+uv run oura-scraper scrape                  # Run scraper
 
 # Development
 uv run ruff check src/                      # Lint
@@ -30,9 +30,13 @@ uv run pytest                               # Run tests
 src/oura_scraper/
 ├── __init__.py          # CLI entry point (argparse)
 ├── config.py            # Settings via pydantic-settings (env vars with OURA_ prefix)
+├── auth.py              # OAuth2 authentication and token management
+├── api_client.py        # Oura API client for all endpoints
+├── scraper.py           # Main scraper orchestration
 ├── db/
 │   ├── __init__.py
-│   └── schema.py        # SQL schema for all Oura API tables
+│   ├── schema.py        # SQL schema for all Oura API tables
+│   └── operations.py    # Database upsert operations
 ```
 
 ## Environment Variables
@@ -52,35 +56,21 @@ All configuration uses `OURA_` prefix:
 | `OURA_REFRESH_TOKEN` | OAuth2 refresh token | (required) |
 | `OURA_SCRAPE_DAYS` | Days to scrape | 7 |
 
-## Database
+## Database Tables
 
-Uses existing `health` database on `health-db-production-v1` CNPG cluster in `health-api` namespace on Mimir.
-
-**Connection via kubectl:**
-```bash
-export KUBECONFIG=admin/mimir/kubeconfig-local
-kubectl exec -n health-api health-db-production-v1-3 -c postgres -- psql -U postgres -d health
-```
-
-**Existing Oura tables** (with data from 2024-03-29 to present):
-- `oura_daily_activity` (594 rows)
-- `oura_daily_sleep` (581 rows)
-- `oura_daily_readiness` (581 rows)
-- `oura_daily_cardiovascular_age` (582 rows)
-- `oura_heart_rate` (397,275 rows)
-- `oura_sleep_data` (755 rows)
-
-**New tables to be created** (schema in `db/schema.py`):
+Tables created by `init-db`:
 - `oura_personal_info`
+- `oura_daily_activity`
+- `oura_daily_sleep`
+- `oura_daily_readiness`
 - `oura_daily_stress`
 - `oura_daily_spo2`
-- `oura_daily_resilience`
+- `oura_sleep_data`
 - `oura_sleep_time`
-- `oura_vo2_max`
+- `oura_heart_rate`
 - `oura_workout`
 - `oura_session`
 - `oura_enhanced_tag`
-- `oura_ring_configuration`
 - `oura_rest_mode_period`
 
 ## Oura API v2
@@ -104,22 +94,26 @@ kubectl exec -n health-api health-db-production-v1-3 -c postgres -- psql -U post
 - `daily_readiness` - Readiness scores
 - `daily_stress` - Stress/recovery
 - `daily_spo2` - Blood oxygen
-- `daily_cardiovascular_age` - CV age
-- `daily_resilience` - Resilience
 - `sleep` - Detailed sleep periods
 - `sleep_time` - Optimal bedtime
 - `heartrate` - 5-min HR intervals
-- `vo2_max` - Cardio capacity
 - `workout` - Workouts
 - `session` - Meditation/breathing
 - `enhanced_tag` - User tags
-- `ring_configuration` - Device info
 - `rest_mode_period` - Rest mode
 
 All paginated endpoints return `next_token` for pagination.
 
-## Kubernetes Context
+## Docker
 
-- **Mimir cluster:** Database cluster (CNPG PostgreSQL)
-- **Jotunheim cluster:** Application deployment target
-- **kubeconfig:** `admin/mimir/kubeconfig-local` for database access
+```bash
+# Build
+docker build -t oura-scraper .
+
+# Run
+docker run --rm --env-file .env oura-scraper scrape
+```
+
+## Kubernetes
+
+See `examples/kubernetes/` for deployment manifests.
