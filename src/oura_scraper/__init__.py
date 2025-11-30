@@ -131,11 +131,30 @@ def cmd_test_api(args: argparse.Namespace) -> int:
 
 def cmd_scrape(args: argparse.Namespace) -> int:
     """Run the scraper."""
+    from oura_scraper.scraper import OuraScraper
+
     settings = get_settings()
-    logger.info("Starting scrape for %d days", settings.scrape_days)
-    # TODO: Implement scraping logic
-    logger.warning("Scraping not yet implemented")
-    return 0
+    days = args.days if args.days else settings.scrape_days
+
+    try:
+        scraper = OuraScraper(days=days)
+        stats = scraper.scrape_all()
+
+        print(f"\nScrape completed for {days} days ({scraper.start_date} to {scraper.end_date})")
+        print("Results:")
+        total_records = 0
+        for endpoint, result in stats.items():
+            if result.get("success"):
+                count = result.get("records", 0)
+                total_records += count
+                print(f"  {endpoint}: {count} records")
+            else:
+                print(f"  {endpoint}: FAILED - {result.get('error', 'unknown')}")
+        print(f"\nTotal: {total_records} records")
+        return 0
+    except Exception as e:
+        logger.error("Scrape failed: %s", e)
+        return 1
 
 
 def main() -> None:
@@ -183,6 +202,12 @@ def main() -> None:
 
     # scrape command
     scrape_parser = subparsers.add_parser("scrape", help="Run the scraper")
+    scrape_parser.add_argument(
+        "--days",
+        type=int,
+        default=None,
+        help="Number of days to scrape (default: OURA_SCRAPE_DAYS or 7)",
+    )
     scrape_parser.set_defaults(func=cmd_scrape)
 
     args = parser.parse_args()

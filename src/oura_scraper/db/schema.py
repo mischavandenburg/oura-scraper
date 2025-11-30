@@ -29,7 +29,14 @@ CREATE TABLE IF NOT EXISTS oura_daily_activity (
     score INTEGER,
     active_calories INTEGER,
     average_met_minutes NUMERIC(10,5),
-    contributors JSONB,
+    -- Extracted contributor fields for easy Grafana querying
+    stay_active INTEGER,
+    move_every_hour INTEGER,
+    meet_daily_targets INTEGER,
+    training_frequency INTEGER,
+    training_volume INTEGER,
+    recovery_time INTEGER,
+    -- Original fields
     equivalent_walking_distance INTEGER,
     high_activity_met_minutes INTEGER,
     high_activity_time INTEGER,
@@ -56,8 +63,6 @@ CREATE INDEX IF NOT EXISTS idx_oura_daily_activity_day ON oura_daily_activity(da
 CREATE INDEX IF NOT EXISTS idx_oura_daily_activity_score ON oura_daily_activity(score);
 CREATE INDEX IF NOT EXISTS idx_oura_daily_activity_steps ON oura_daily_activity(steps);
 CREATE INDEX IF NOT EXISTS idx_oura_daily_activity_timestamp ON oura_daily_activity(timestamp);
-CREATE INDEX IF NOT EXISTS idx_daily_activity_contributors
-    ON oura_daily_activity USING GIN(contributors);
 CREATE INDEX IF NOT EXISTS idx_daily_activity_met ON oura_daily_activity USING GIN(met);
 
 -- Daily Sleep
@@ -65,7 +70,14 @@ CREATE TABLE IF NOT EXISTS oura_daily_sleep (
     id UUID PRIMARY KEY,
     day DATE NOT NULL,
     score INTEGER,
-    contributors JSONB,
+    -- Extracted contributor fields for easy Grafana querying (CRITICAL!)
+    deep_sleep INTEGER,
+    efficiency INTEGER,
+    latency INTEGER,
+    rem_sleep INTEGER,
+    restfulness INTEGER,
+    timing INTEGER,
+    total_sleep INTEGER,
     timestamp TIMESTAMP WITH TIME ZONE
 );
 
@@ -77,7 +89,17 @@ CREATE TABLE IF NOT EXISTS oura_daily_readiness (
     id UUID PRIMARY KEY,
     day DATE NOT NULL,
     score INTEGER,
-    contributors JSONB,
+    -- Extracted contributor fields for easy Grafana querying
+    activity_balance INTEGER,
+    body_temperature INTEGER,
+    hrv_balance INTEGER,
+    previous_day_activity INTEGER,
+    previous_night INTEGER,
+    recovery_index INTEGER,
+    resting_heart_rate INTEGER,
+    sleep_balance INTEGER,
+    sleep_regularity INTEGER,
+    -- Original fields
     temperature_deviation NUMERIC(10,5),
     temperature_trend_deviation NUMERIC(10,5),
     timestamp TIMESTAMP WITH TIME ZONE
@@ -86,8 +108,6 @@ CREATE TABLE IF NOT EXISTS oura_daily_readiness (
 CREATE INDEX IF NOT EXISTS idx_oura_daily_readiness_day ON oura_daily_readiness(day);
 CREATE INDEX IF NOT EXISTS idx_oura_daily_readiness_score ON oura_daily_readiness(score);
 CREATE INDEX IF NOT EXISTS idx_oura_daily_readiness_timestamp ON oura_daily_readiness(timestamp);
-CREATE INDEX IF NOT EXISTS idx_daily_readiness_contributors
-    ON oura_daily_readiness USING GIN(contributors);
 
 -- Daily Stress
 CREATE TABLE IF NOT EXISTS oura_daily_stress (
