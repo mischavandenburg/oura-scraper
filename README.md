@@ -5,6 +5,8 @@ A Python CLI tool that scrapes health metrics from the Oura Ring API and stores 
 ## Features
 
 - OAuth2 authentication with automatic token refresh
+- **Database token storage** for stateless container deployments (12-factor compliant)
+- **Encrypted tokens at rest** using Fernet symmetric encryption
 - Scrapes all 17 Oura API v2 endpoints
 - Upserts data to PostgreSQL (safe to re-run)
 - Configurable scrape window (default: 7 days)
@@ -13,7 +15,7 @@ A Python CLI tool that scrapes health metrics from the Oura Ring API and stores 
 
 ## Getting OAuth Tokens
 
-Before using the scraper, you need to obtain OAuth tokens from Oura:
+Before using the scraper, you need to obtain OAuth tokens from Oura.
 
 ### 1. Create an Oura Application
 
@@ -43,14 +45,25 @@ This will:
 
 For local development, the scraper reads from the token file automatically.
 
-For containerized deployments, extract the tokens and set them as environment variables:
+For containerized deployments, set the tokens as environment variables for initial bootstrap:
 
 ```bash
 export OURA_ACCESS_TOKEN=<access_token from json>
 export OURA_REFRESH_TOKEN=<refresh_token from json>
 ```
 
-**Note**: Refresh tokens are single-use. Each time the scraper refreshes the access token, it receives a new refresh token. The scraper handles this automatically and updates the stored tokens.
+### Important: Token Refresh Behavior
+
+Oura refresh tokens are **single-use**. Each time the access token expires and is refreshed, a new refresh token is issued and the old one is invalidated.
+
+For containerized deployments, the scraper uses **database token storage**:
+
+1. On first run, tokens are loaded from environment variables (bootstrap)
+2. After the first token refresh, new tokens are saved to the database
+3. Subsequent runs load tokens from the database (not env vars)
+4. This ensures tokens persist across container restarts
+
+The token loading priority is: **Database → Environment Variables**
 
 ## Quick Start
 
@@ -109,10 +122,37 @@ All variables use the `OURA_` prefix:
 | `OURA_DB_PASSWORD` | Database password | (required) |
 | `OURA_CLIENT_ID` | OAuth2 client ID | (for OAuth flow) |
 | `OURA_CLIENT_SECRET` | OAuth2 client secret | (for OAuth flow) |
-| `OURA_ACCESS_TOKEN` | OAuth2 access token | (for containers) |
-| `OURA_REFRESH_TOKEN` | OAuth2 refresh token | (for containers) |
-| `OURA_TOKEN_PATH` | Path to store OAuth tokens | `~/.config/oura-scraper/tokens.json` |
+| `OURA_ACCESS_TOKEN` | OAuth2 access token | (for bootstrap) |
+| `OURA_REFRESH_TOKEN` | OAuth2 refresh token | (for bootstrap) |
+| `OURA_ENCRYPTION_KEY` | Fernet key for encrypting tokens in DB | (optional) |
+| `OURA_TOKEN_PATH` | Path to store OAuth tokens (local dev) | `~/.config/oura-scraper/tokens.json` |
 | `OURA_SCRAPE_DAYS` | Days of data to scrape | `7` |
+
+## Token Security
+
+### Encryption at Rest
+
+Tokens stored in the database can be encrypted using Fernet symmetric encryption. To enable:
+
+1. Generate a Fernet key:
+   ```bash
+   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+   ```
+
+2. Store the key securely (e.g., Azure Key Vault, AWS Secrets Manager)
+
+3. Set the `OURA_ENCRYPTION_KEY` environment variable
+
+When the encryption key is set, tokens are encrypted before being written to the database and decrypted when read. If no key is provided, tokens are stored in plaintext.
+
+### Database Token Storage
+
+The scraper stores tokens in an `oauth_tokens` table in PostgreSQL. This table is created automatically when you run `init-db`. The schema includes:
+
+- `access_token` - The OAuth access token (encrypted if key provided)
+- `refresh_token` - The OAuth refresh token (encrypted if key provided)
+- `expires_at` - Token expiration timestamp
+- `updated_at` - Last update timestamp
 
 ## Data Collected
 
@@ -127,7 +167,26 @@ The scraper collects data from all Oura API v2 endpoints:
 
 ## Kubernetes Deployment
 
-Example CronJob configuration:
+### Required Secrets
+
+Create a secret with the following keys:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oura-scraper-env
+stringData:
+  OURA_CLIENT_ID: "your-client-id"
+  OURA_CLIENT_SECRET: "your-client-secret"
+  OURA_ACCESS_TOKEN: "initial-access-token"
+  OURA_REFRESH_TOKEN: "initial-refresh-token"
+  OURA_ENCRYPTION_KEY: "your-fernet-key"  # Optional but recommended
+```
+
+For production, use External Secrets Operator to sync from a secrets manager.
+
+### CronJob Configuration
 
 ```yaml
 apiVersion: batch/v1
@@ -136,19 +195,30 @@ metadata:
   name: oura-scraper
 spec:
   schedule: "0 * * * *"  # Every hour
+  concurrencyPolicy: Forbid
   jobTemplate:
     spec:
       template:
         spec:
+          restartPolicy: Never
           containers:
             - name: oura-scraper
               image: ghcr.io/mischavandenburg/oura-scraper:latest
               command: ["/app/.venv/bin/oura-scraper", "scrape"]
               envFrom:
                 - secretRef:
-                    name: oura-scraper-secrets
-          restartPolicy: Never
+                    name: oura-scraper-env
+                - secretRef:
+                    name: oura-scraper-db  # Database credentials
 ```
+
+### First-Time Setup
+
+1. Run the OAuth flow locally to get initial tokens
+2. Store tokens in your secrets manager (Key Vault, etc.)
+3. Deploy the CronJob
+4. On first run, tokens load from env vars and get saved to database
+5. Subsequent runs use database tokens (automatically refreshed)
 
 ## Development
 
