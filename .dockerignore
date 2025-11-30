@@ -22,7 +22,7 @@ admin/
 .devcontainer/
 .github/
 .vscode/
-*.md
+CLAUDE.md
 mise.toml
 .python-version
 
