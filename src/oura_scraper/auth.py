@@ -197,24 +197,13 @@ class DatabaseTokenStorage:
         logger.info("Tokens saved to database")
 
     def load(self) -> OAuthTokens | None:
-        """Load tokens from env vars or database.
+        """Load tokens from database, falling back to env vars for bootstrap.
 
-        Priority: env vars > database
+        Priority: database > env vars (env vars are just for initial bootstrap)
         """
         import psycopg
 
-        # First try env vars (for initial bootstrap)
-        settings = get_settings()
-        if settings.access_token and settings.refresh_token:
-            logger.debug("Loading tokens from environment variables")
-            return OAuthTokens(
-                access_token=settings.access_token,
-                refresh_token=settings.refresh_token,
-                expires_at=datetime.now(UTC) + timedelta(days=365),
-                token_type="bearer",
-            )
-
-        # Fall back to database
+        # First try database (has refreshed tokens)
         try:
             with psycopg.connect(self.database_url) as conn, conn.cursor() as cur:
                 cur.execute(
@@ -235,6 +224,18 @@ class DatabaseTokenStorage:
                     )
         except psycopg.Error as e:
             logger.warning("Failed to load tokens from database: %s", e)
+
+        # Fall back to env vars (initial bootstrap only)
+        settings = get_settings()
+        if settings.access_token and settings.refresh_token:
+            logger.debug("Loading tokens from environment variables (bootstrap)")
+            # Set expires_at to now so it triggers immediate refresh and saves to DB
+            return OAuthTokens(
+                access_token=settings.access_token,
+                refresh_token=settings.refresh_token,
+                expires_at=datetime.now(UTC),  # Expired = triggers refresh
+                token_type="bearer",
+            )
 
         return None
 
